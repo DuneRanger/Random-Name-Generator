@@ -20,3 +20,6 @@ process: data/raw.csv $(PROC_DIR)process_raw
 
 $(PROC_DIR)process_raw: $(PROC_DIR)process_raw.cpp
 	g++ $< -o $@
+
+gen: name_generator.cpp
+	g++ $< -o $@
