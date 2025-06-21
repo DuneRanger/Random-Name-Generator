@@ -44,7 +44,7 @@ class WordGen {
 		std::string prepare_word(const std::string& _word) {
 			std::string prefix = "";
 			for (int i = 0 ; i < max_prefix_len; i++) prefix += "^";
-			return prefix + lowercase(_word) + '$';
+			return (prefix + lowercase(_word) + "$");
 		}
 
 	public:
@@ -112,7 +112,7 @@ class WordGen {
 		// Adds the characters of the word given as input into the data
 		// char count and prefixes will only be calculated for the given index of the word
 		void add_word_positional(const std::string& _word, uint8_t ind) {
-			if (ind >= _word.size()) return;
+			if (ind >= _word.size()+1) return;
 			std::string word = prepare_word(_word);
 			ind += max_prefix_len;
 			char char_ind = calc_char_ind(word[ind]);
@@ -163,7 +163,7 @@ class WordGen {
 				total_count += letters_raw[i];
 			}
 			if (prefix.size() > max_prefix_len) prefix = prefix.substr(prefix.size() - max_prefix_len);
-			uint64_t prefix_mult = uint64_t(UINT32_MAX) << (4*max_prefix_len);
+			uint64_t prefix_mult = uint64_t(UINT16_MAX) << (6*max_prefix_len);
 			for (int i = max_prefix_len; i > 0; i--) {
 				prefix_mult >>= 4;
 				if (prefix.size() < i) continue;
@@ -182,7 +182,7 @@ class WordGen {
 			// test.close();
 			std::random_device rd;
 			std::mt19937_64 gen(rd());
-			std::uniform_int_distribution<uint64_t> uniform(1, total_count);
+			std::uniform_int_distribution<int64_t> uniform(1, total_count);
 			int64_t num = uniform(gen);
 			// std::cout << num << " " << total_count << " " << UINT32_MAX  << std::endl;
 			for (int i = 0; i < letters.size(); i++) {
@@ -193,8 +193,8 @@ class WordGen {
 			return '!';
 		}
 
-		std::string gen_word() {
-			std::string word = "";
+		std::string gen_word(std::string prefix = "") {
+			std::string word = prefix;
 			char next = gen_char(word);
 			while (next != '$') {
 				word += next;
@@ -217,40 +217,77 @@ class NameGen {
 		WordGen global_gen;
 
 	public:
+		NameGen() {}
+
+		void setup(std::string path) {
+			std::ifstream input(path);
+			std::string line;
+			input >> line;
+			while (input >> line) {
+				int comma = line.find(',');
+				std::string masc = line.substr(0, comma);
+				std::string fem = line.substr(comma+1);
+				for (int i = 0; i < max_len; i++) {
+					masculine_gen[i].add_word_positional(masc, i);
+				}
+				for (int i = 0; i < max_len; i++) {
+					feminine_gen[i].add_word_positional(fem, i);
+				}
+				if (masc.size()) global_gen.add_word(masc);
+				if (fem.size()) global_gen.add_word(fem);
+			}
+			// std::string base_path = "./testing/";
+			// for (int i = 0; i < max_len; i++) {
+			// 	masculine_gen[i].export_to_csv(base_path + std::to_string(i) + ".csv");
+			// }
+		}
 		// generates a masculine name, length can be limited
-		std::string gen_masc(uint8_t max_length = max_len);
+		std::string gen_masc(uint8_t max_length = max_len) {
+			std::string name = "";
+			char next = masculine_gen[0].gen_char(name);
+			while (next != '$') {
+				name += next;
+				if (name.size() >= max_len) break;
+				next = masculine_gen[name.size()].gen_char(name);
+			}
+			return name;
+		}
 		// generates a feminine name, length can be limited
-		std::string gen_fem(uint8_t max_length = max_len);
+		std::string gen_fem(uint8_t max_length = max_len) {
+			std::string name = "";
+			char next = feminine_gen[0].gen_char(name);
+			while (next != '$') {
+				name += next;
+				if (name.size() >= max_len) break;
+				next = feminine_gen[name.size()].gen_char(name);
+			}
+			return name;
+		}
 		// generates either a masculine or feminine name, based on 50/50 odds
 		// length can be limited
-		std::string gen(uint8_t max_length = max_len);
+		std::string gen(uint8_t max_length = max_len) {
+			if (std::rand()%2) return gen_masc();
+			return gen_fem();
+		}
 
 		// generates a name, where each character is generated irrespective of their position in the name
 		// the data used contains both masculine and feminine names
 		// length can be limited
-		std::string gen_non_positional(uint8_t max_length = max_len);
+		std::string gen_non_positional(uint8_t max_length = max_len) {
+			return global_gen.gen_word();
+		}
 };
 
 int main(int argc, char *argv[]) {
-	WordGen test;
-	std::ifstream input("./data/processed.csv");
-	std::string line;
-	input >> line;
-	while (input >> line) {
-		int comma = line.find(',');
-		std::string masc = line.substr(0, comma);
-		std::string fem = line.substr(comma+1);
-		if (masc.size()) test.add_word(masc);
-		if (fem.size()) test.add_word(fem);
-	}
-	test.add_word("testing");
-	test.export_to_csv("./testing/");
-	// std::cout << test.gen_word() << std::endl;
+	NameGen gen;
+	std::string path = "./data/processed.csv";
+	gen.setup(path);
 	for (int j = 0; j < 5; j++) {
 		for (int i = 0; i < 10; i++) {
-			std::cout << test.gen_word() << "\t";
-		}	
-		std::cout << std::endl;
+			std::cout << gen.gen() << "\t";
+		}
+		std::cout << '\n';
 	}
+	std::cout << std::endl;
 	
 }

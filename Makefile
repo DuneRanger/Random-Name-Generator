@@ -12,6 +12,7 @@ all: process
 .PHONY: all clean process
 
 clean:
+	rm .\gen_data_debug\*.csv
 
 data/processed.csv: process
 
