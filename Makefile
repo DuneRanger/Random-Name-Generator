@@ -1,26 +1,21 @@
-DATA = \
-raw \
-processed \
-
-DATA_CSV = $(addsuffix .csv, $(DATA))
-DATA_FULL = $(addprefix data/, $(DATA_CSV))
-
 PROC_DIR=data_processing/
 
-all: process
+all: data/raw.csv data/processed.csv char_gen.hpp name_gen
 
 .PHONY: all clean process
 
 clean:
 	rm .\gen_data_debug\*.csv
+	rm .\data_processing\process_raw.exe
+	rm .\data\processed.csv
 
-data/processed.csv: process
-
-process: data/raw.csv $(PROC_DIR)process_raw
+data/processed.csv: data/raw.csv $(PROC_DIR)process_raw
 	./$(PROC_DIR)process_raw
+
+process: data/processed.csv data/raw.csv
 
 $(PROC_DIR)process_raw: $(PROC_DIR)process_raw.cpp
 	g++ $< -o $@
 
-gen: name_generator.cpp
+name_gen: name_generator.cpp
 	g++ $< -o $@
